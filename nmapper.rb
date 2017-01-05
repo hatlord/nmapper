@@ -20,6 +20,7 @@ def parse(nmap)
             hosts[:proto]     = srvc.xpath('./@protocol').text
             hosts[:port]      = srvc.xpath('./@portid').text
             hosts[:service]   = srvc.xpath('./service/@name').text
+            hosts[:reason]    = srvc.xpath('./state/@reason').text
             hosts[:product]   = srvc.xpath('./service/@product').text
             hosts[:version]   = srvc.xpath('./service/@version').text
             hosts[:extra]     = srvc.xpath('./service/@extrainfo').text
@@ -57,9 +58,9 @@ end
 
 def write_results
   CSV.open(@csvfile, 'w+') do |csv|
-    csv << ['IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output']
+    csv << ['IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
     @scan_array.each do |result|
-      csv << [result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout]]
+      csv << [result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
     end
   end
 end
