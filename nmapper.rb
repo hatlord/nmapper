@@ -21,6 +21,7 @@ def parse
 
           ports.xpath('./ports/port').each do |srvc|
             if srvc.xpath('./state/@state').text == 'open'
+              hosts[:file]      = File.basename(file, '.*')
               hosts[:proto]     = srvc.xpath('./@protocol').text
               hosts[:port]      = srvc.xpath('./@portid').text
               hosts[:service]   = srvc.xpath('./service/@name').text
@@ -63,9 +64,9 @@ end
 
 def write_results
   CSV.open(@csvfile, 'w+') do |csv|
-    csv << ['IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
+    csv << ['NMAP File', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
     @scan_array.each do |result|
-      csv << [result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
+      csv << [result[:file], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
     end
   end
 end
