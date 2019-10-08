@@ -12,9 +12,13 @@ require 'csv'
 def parse
   @nmap_files.each do |file|
     nmap = Nokogiri::XML(File.read(file))
-    start_time = nmap.xpath('./nmaprun/@startstr').text
-    end_time   = nmap.xpath('./nmaprun/runstats/finished/@timestr').text
-    elapsed    = Time.at(nmap.xpath('./nmaprun/runstats/finished/@elapsed').text.to_i).strftime("%H:%M:%S")
+    start_time  = nmap.xpath('./nmaprun/@startstr').text
+    end_time    = nmap.xpath('./nmaprun/runstats/finished/@timestr').text
+    elapsed     = Time.at(nmap.xpath('./nmaprun/runstats/finished/@elapsed').text.to_i).utc.strftime("%H:%M:%S")
+    hosts_up    = nmap.xpath('./nmaprun/runstats/hosts/@up').text
+    hosts_down  = nmap.xpath('./nmaprun/runstats/hosts/@down').text
+    hosts_total = nmap.xpath('./nmaprun/runstats/hosts/@total').text
+
     nmap.xpath('./nmaprun/host').each do |ports|
       hosts = {}
 
@@ -28,6 +32,9 @@ def parse
               hosts[:start]     = start_time
               hosts[:end]       = end_time
               hosts[:time]      = elapsed
+              hosts[:up]        = hosts_up
+              hosts[:down]      = hosts_down
+              hosts[:total]     = hosts_total
               hosts[:proto]     = srvc.xpath('./@protocol').text
               hosts[:port]      = srvc.xpath('./@portid').text
               hosts[:service]   = srvc.xpath('./service/@name').text
@@ -70,9 +77,9 @@ end
 
 def write_results
   CSV.open(@csvfile, 'w+') do |csv|
-    csv << ['NMAP File', 'Scan Start', 'Scan End', 'Total Time of Scan', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
+    csv << ['NMAP File', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
     @scan_array.each do |result|
-      csv << [result[:file], result[:start], result[:end], result[:time], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
+      csv << [result[:file], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
     end
   end
 end
