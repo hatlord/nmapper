@@ -12,6 +12,9 @@ require 'csv'
 def parse
   @nmap_files.each do |file|
     nmap = Nokogiri::XML(File.read(file))
+    start_time = nmap.xpath('./nmaprun/@startstr').text
+    end_time   = nmap.xpath('./nmaprun/runstats/finished/@timestr').text
+    elapsed    = Time.at(nmap.xpath('./nmaprun/runstats/finished/@elapsed').text.to_i).strftime("%H:%M:%S")
     nmap.xpath('./nmaprun/host').each do |ports|
       hosts = {}
 
@@ -22,6 +25,9 @@ def parse
           ports.xpath('./ports/port').each do |srvc|
             if srvc.xpath('./state/@state').text == 'open'
               hosts[:file]      = File.basename(file, '.*')
+              hosts[:start]     = start_time
+              hosts[:end]       = end_time
+              hosts[:time]      = elapsed
               hosts[:proto]     = srvc.xpath('./@protocol').text
               hosts[:port]      = srvc.xpath('./@portid').text
               hosts[:service]   = srvc.xpath('./service/@name').text
@@ -64,9 +70,9 @@ end
 
 def write_results
   CSV.open(@csvfile, 'w+') do |csv|
-    csv << ['NMAP File', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
+    csv << ['NMAP File', 'Scan Start', 'Scan End', 'Total Time of Scan', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
     @scan_array.each do |result|
-      csv << [result[:file], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
+      csv << [result[:file], result[:start], result[:end], result[:time], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
     end
   end
 end
