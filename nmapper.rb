@@ -18,6 +18,7 @@ def parse
     hosts_up    = nmap.xpath('./nmaprun/runstats/hosts/@up').text
     hosts_down  = nmap.xpath('./nmaprun/runstats/hosts/@down').text
     hosts_total = nmap.xpath('./nmaprun/runstats/hosts/@total').text
+    args        = nmap.xpath('./nmaprun/@args').text
 
     nmap.xpath('./nmaprun/host').each do |ports|
       hosts = {}
@@ -29,6 +30,7 @@ def parse
           ports.xpath('./ports/port').each do |srvc|
             if srvc.xpath('./state/@state').text == 'open'
               hosts[:file]      = File.basename(file, '.*')
+              hosts[:args]      = args
               hosts[:start]     = start_time
               hosts[:end]       = end_time
               hosts[:time]      = elapsed
@@ -77,9 +79,9 @@ end
 
 def write_results
   CSV.open(@csvfile, 'w+') do |csv|
-    csv << ['NMAP File', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
+    csv << ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
     @scan_array.each do |result|
-      csv << [result[:file], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
+      csv << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
     end
   end
 end
