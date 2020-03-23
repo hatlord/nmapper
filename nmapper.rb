@@ -24,6 +24,8 @@ def parse
       hosts = {}
 
         hosts[:addr]      = ports.xpath('./address[1]/@addr').text
+        hosts[:mac]       = ports.xpath('./address[2]/@addr').text
+        hosts[:vendor]    = ports.xpath('./address[2]/@vendor').text
         hosts[:os]        = ports.xpath('./os/osmatch/@name').map(&:text).join("\r")
         puts "Parsing: #{hosts[:addr]}"
 
@@ -79,9 +81,9 @@ end
 
 def write_results
   CSV.open(@csvfile, 'w+') do |csv|
-    csv << ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
+    csv << ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'Responding MAC Addr', 'Responding Mac Addr Vendor', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
     @scan_array.each do |result|
-      csv << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
+      csv << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:mac], result[:vendor], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
     end
   end
 end
