@@ -72,6 +72,18 @@ def parse
   end
 end
 
+def group_by_ip
+  puts "\nDumping ports per host"
+  @grouped = @scan_array.group_by {|e| e[:addr]}
+  @grouped.each do |k, v|
+    port_array = []
+    v.each do |value|
+      port_array << value[:protop]
+    end
+    puts "#{k}\t#{port_array.join(', ')}"
+  end
+end
+
 def create_file
   Dir.mkdir("#{Dir.home}/Documents/nmapper_out/") unless File.exists?("#{Dir.home}/Documents/nmapper_out/")
   @file    = "Nmapper_#{Time.now.strftime("%d%b%Y_%H%M%S")}"
@@ -90,5 +102,6 @@ end
 
 
 parse
+group_by_ip
 create_file
 write_results
