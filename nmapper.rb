@@ -154,6 +154,16 @@ def grouped_by_port_excel
   create_excel_data(headers, rows.sort_by { |e| e[2].to_i}.reverse, sheetname)
 end
 
+def toms_sheet
+  rows      = []
+  headers   = ['IP Address', 'Operating System', 'Protocol/Port', 'Service Version']
+  sheetname = "Tom's Sheet"
+  @scan_array.each do |inner|
+   rows << [inner[:addr], inner[:os], inner[:protop], inner[:combo]]
+  end
+  create_excel_data(headers, rows, sheetname)
+end
+
 def terminal_out
   puts "Data written to #{@excel_file}"
 end
@@ -164,5 +174,5 @@ create_excel_file
 create_basic_open_ports_list
 condensed_open_ports
 grouped_by_port_excel
-# group_by_port
+toms_sheet
 terminal_out
