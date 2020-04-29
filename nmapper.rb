@@ -3,7 +3,7 @@
 #Parses NMAP Scans to report table format
 
 require 'nokogiri'
-require 'csv'
+require 'caxlsx'
 
 @nmap_files = Dir.glob(ARGV[0] + '/*.xml')
 
@@ -73,35 +73,67 @@ def parse
 end
 
 def group_by_ip
-  puts "\nDumping ports per host"
+  scanarray = []
   @grouped = @scan_array.group_by {|e| e[:addr]}
   @grouped.each do |k, v|
-    port_array = []
+    scandata = {}
+    scandata[:ip] = k
+    scandata[:ports] = []
     v.each do |value|
-      port_array << value[:protop]
+      scandata[:ports] << value[:protop]
     end
-    puts "#{k}\t#{port_array.join(', ')}"
+    scanarray << scandata
   end
+  scanarray
 end
 
-def create_file
+def create_excel_file
+  @excel_file = "#{Dir.home}/Documents/nmapper_out/nmapper_#{Time.now.strftime("%d%b%Y_%H%M%S")}.xlsx"
+  @p = Axlsx::Package.new
+  @wb = @p.workbook
+end
+
+def create_excel_data(headers, rows, sheetname)
+  @wb.add_worksheet(:name => sheetname) do |sheet|
+    sheet.add_row(headers)
+    rows.each do |row|
+      sheet.add_row row
+    end
+  end
+  @p.serialize @excel_file
+end
+
+def create_directory
   Dir.mkdir("#{Dir.home}/Documents/nmapper_out/") unless File.exists?("#{Dir.home}/Documents/nmapper_out/")
-  @file    = "Nmapper_#{Time.now.strftime("%d%b%Y_%H%M%S")}"
-  @csvfile = File.new("#{Dir.home}/Documents/nmapper_out/#{@file}.csv", 'w+')
-  puts "Output written to #{@csvfile.path}"
 end
 
-def write_results
-  CSV.open(@csvfile, 'w+') do |csv|
-    csv << ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'Responding MAC Addr', 'Responding Mac Addr Vendor', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
-    @scan_array.each do |result|
-      csv << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:mac], result[:vendor], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
-    end
+def create_basic_open_ports_list
+  rows      = []
+  headers   = ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'Responding MAC Addr', 'Responding Mac Addr Vendor', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
+  sheetname = 'Open Ports'
+  @scan_array.each do |result|
+    rows << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:mac], result[:vendor], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
   end
+  create_excel_data(headers, rows, sheetname)
 end
 
+def condensed_open_ports
+  rows      = []
+  headers   = ['IP', 'Ports']
+  sheetname = 'CondensedPorts'
+  group_by_ip.each do |inner|
+    rows << [inner[:ip], inner[:ports].join(", ")]
+  end
+  create_excel_data(headers, rows, sheetname)
+end
+
+def terminal_out
+  puts "Data written to #{@excel_file}"
+end
 
 parse
-group_by_ip
-create_file
-write_results
+create_directory
+create_excel_file
+create_basic_open_ports_list
+condensed_open_ports
+terminal_out
