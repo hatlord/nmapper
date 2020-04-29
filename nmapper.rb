@@ -74,8 +74,8 @@ end
 
 def group_by_ip
   scanarray = []
-  @grouped = @scan_array.group_by {|e| e[:addr]}
-  @grouped.each do |k, v|
+  grouped = @scan_array.group_by {|e| e[:addr]}
+  grouped.each do |k, v|
     scandata = {}
     scandata[:ip] = k
     scandata[:ports] = []
@@ -119,12 +119,39 @@ end
 
 def condensed_open_ports
   rows      = []
-  headers   = ['IP', 'Ports']
+  headers   = ['IP', 'Ports', 'Port Count']
   sheetname = 'CondensedPorts'
   group_by_ip.each do |inner|
-    rows << [inner[:ip], inner[:ports].join(", ")]
+    rows << [inner[:ip], inner[:ports].join(", "), inner[:ports].length]
   end
-  create_excel_data(headers, rows, sheetname)
+  create_excel_data(headers, rows.sort_by { |e| e[2].to_i}.reverse, sheetname)
+end
+
+def group_by_port
+  #should come back and consolidate this and group_by_ips ideally
+  array_of_rows = []
+  grouped_by_port = @scan_array.group_by {|e| e[:protop]}
+  grouped_by_port.each do |k, v|
+    rows = {}
+    rows[:addrs] = []
+    rows[:port] = k
+    v.each do |value|
+      rows[:addrs] << value[:addr]
+    end
+    array_of_rows << rows
+  end
+  array_of_rows
+end
+
+def grouped_by_port_excel
+  #need to condense this and condensed_open_ports
+  rows      = []
+  headers   = ['Port', 'IP Addresses', 'IP Count']
+  sheetname = 'GroupedByPort'
+  group_by_port.each do |inner|
+    rows << [inner[:port], inner[:addrs].join(", "), inner[:addrs].length]
+  end
+  create_excel_data(headers, rows.sort_by { |e| e[2].to_i}.reverse, sheetname)
 end
 
 def terminal_out
@@ -136,4 +163,6 @@ create_directory
 create_excel_file
 create_basic_open_ports_list
 condensed_open_ports
+grouped_by_port_excel
+# group_by_port
 terminal_out
