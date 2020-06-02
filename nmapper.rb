@@ -80,6 +80,7 @@ def group_by_ip
     scandata[:ip] = k
     scandata[:ports] = []
     v.each do |value|
+      scandata[:file] = value[:file]
       scandata[:ports] << value[:protop]
     end
     scanarray << scandata
@@ -119,12 +120,12 @@ end
 
 def condensed_open_ports
   rows      = []
-  headers   = ['IP', 'Ports', 'Port Count']
+  headers   = ['File', 'IP', 'Ports', 'Port Count']
   sheetname = 'CondensedPorts'
   group_by_ip.each do |inner|
-    rows << [inner[:ip], inner[:ports].join(", "), inner[:ports].length]
+    rows << [inner[:file], inner[:ip], inner[:ports].join(", "), inner[:ports].length]
   end
-  create_excel_data(headers, rows.sort_by { |e| e[2].to_i}.reverse, sheetname)
+  create_excel_data(headers, rows.sort_by { |e| e[3].to_i}.reverse, sheetname) #sort port count in descending order
 end
 
 def group_by_port
