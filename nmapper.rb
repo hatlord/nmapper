@@ -28,53 +28,54 @@ def parse
         hosts[:vendor]    = ports.xpath('./address[2]/@vendor').text
         hosts[:os]        = ports.xpath('./os/osmatch/@name').map(&:text).join("\r")
         puts "Parsing: #{hosts[:addr]}"
+        ports.xpath('./ports/port').each do |srvc|
+          hosts[:file]      = File.basename(file, '.*')
+          hosts[:args]      = args
+          hosts[:start]     = start_time
+          hosts[:end]       = end_time
+          hosts[:time]      = elapsed
+          hosts[:up]        = hosts_up
+          hosts[:down]      = hosts_down
+          hosts[:total]     = hosts_total
+          hosts[:proto]     = srvc.xpath('./@protocol').text
+          hosts[:port]      = srvc.xpath('./@portid').text
+          hosts[:portstate] = srvc.xpath('./state/@state').text
+          hosts[:service]   = srvc.xpath('./service/@name').text
+          hosts[:reason]    = srvc.xpath('./state/@reason').text
+          hosts[:product]   = srvc.xpath('./service/@product').text
+          hosts[:version]   = srvc.xpath('./service/@version').text
+          hosts[:extra]     = srvc.xpath('./service/@extrainfo').text
+          hosts[:scriptid]  = srvc.xpath('./script/@id').text
+          hosts[:scriptout] = srvc.xpath('./script/@output').text
+          hosts[:protop]    = hosts[:proto].upcase + "/" + hosts[:port]
+          hosts[:combo]     = hosts[:product] + " " + hosts[:version] + " " + hosts[:extra]
+          if hosts[:combo].strip.length == 0
+            hosts[:combo] = "unknown"
+          end
 
-          ports.xpath('./ports/port').each do |srvc|
-            if srvc.xpath('./state/@state').text == 'open'
-              hosts[:file]      = File.basename(file, '.*')
-              hosts[:args]      = args
-              hosts[:start]     = start_time
-              hosts[:end]       = end_time
-              hosts[:time]      = elapsed
-              hosts[:up]        = hosts_up
-              hosts[:down]      = hosts_down
-              hosts[:total]     = hosts_total
-              hosts[:proto]     = srvc.xpath('./@protocol').text
-              hosts[:port]      = srvc.xpath('./@portid').text
-              hosts[:service]   = srvc.xpath('./service/@name').text
-              hosts[:reason]    = srvc.xpath('./state/@reason').text
-              hosts[:product]   = srvc.xpath('./service/@product').text
-              hosts[:version]   = srvc.xpath('./service/@version').text
-              hosts[:extra]     = srvc.xpath('./service/@extrainfo').text
-              hosts[:scriptid]  = srvc.xpath('./script/@id').text
-              hosts[:scriptout] = srvc.xpath('./script/@output').text
-              hosts[:protop]    = hosts[:proto].upcase + "/" + hosts[:port]
-              hosts[:combo]     = hosts[:product] + " " + hosts[:version] + " " + hosts[:extra]
+          if hosts[:os].empty?
+            hosts[:os] = "Unable to Fingerprint"
+          end
 
-              if hosts[:combo].strip.length == 0
-                hosts[:combo] = "unknown"
-              end
+          if hosts[:os].include?('Linux 2.')
+            hosts[:os] = "Linux Kernel 2.x"
+          elsif hosts[:os].include?('Linux 3.')
+            hosts[:os] = "Linux Kernel 3.x"
+          end
 
-              if hosts[:os].empty?
-                hosts[:os] = "Unable to Fingerprint"
-              end
-
-              if hosts[:os].include?('Linux 2.')
-                hosts[:os] = "Linux Kernel 2.x"
-              elsif hosts[:os].include?('Linux 3.')
-                hosts[:os] = "Linux Kernel 3.x"
-              end
-
-            @scan_array << hosts.dup
-        end
+        @scan_array << hosts.dup
       end
     end
   end
 end
 
+def create_port_collections
+  @open_ports = @scan_array.select { |e| e[:portstate] == "open" } #portstate doesnt exist if the host has no open ports...........
+end
+
 def group_by_ip
   scanarray = []
-  grouped = @scan_array.group_by {|e| e[:addr]}
+  grouped = @open_ports.group_by {|e| e[:addr]}
   grouped.each do |k, v|
     scandata = {}
     scandata[:ip] = k
@@ -86,6 +87,29 @@ def group_by_ip
     scanarray << scandata
   end
   scanarray
+end
+
+def open_and_closed_stats
+  @livearray = []
+  addrgroup = @scan_array.group_by { |e| e[:addr]}
+  addrgroup.each do |k, v|
+    hosts = {}
+    hosts[:addr] = k
+    hosts[:ports] = []
+    v.each do |value|
+      hosts[:file] = value[:file]
+      hosts[:ports] << value[:port] #check length of this array, if zero - host is totes dead, if not, its live (none of the dead hosts show up here)
+    end
+    @livearray << hosts
+  end
+end
+
+def up_and_down
+  #the below two will work, but i want to have columns for each scan type, which makes it tricky
+  # @livearray.each { |e| puts e[:ports].length}
+  down = @livearray.select { |e| e[:ports].length == 0 } 
+  up = @livearray.select { |e| e[:ports].length > 0 }
+  # pp up
 end
 
 def create_excel_file
@@ -112,7 +136,7 @@ def create_basic_open_ports_list
   rows      = []
   headers   = ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'Responding MAC Addr', 'Responding Mac Addr Vendor', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port']
   sheetname = 'Open Ports'
-  @scan_array.each do |result|
+  @open_ports.each do |result|
     rows << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:mac], result[:vendor], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
   end
   create_excel_data(headers, rows, sheetname)
@@ -123,7 +147,7 @@ def condensed_open_ports
   headers   = ['File', 'IP', 'Ports', 'Port Count']
   sheetname = 'CondensedPorts'
   group_by_ip.each do |inner|
-    rows << [inner[:file], inner[:ip], inner[:ports].join(", "), inner[:ports].length]
+    rows << [inner[:file], inner[:ip], inner[:ports].uniq.join(", "), inner[:ports].uniq.length]
   end
   create_excel_data(headers, rows.sort_by { |e| e[3].to_i}.reverse, sheetname) #sort port count in descending order
 end
@@ -131,13 +155,16 @@ end
 def group_by_port
   #should come back and consolidate this and group_by_ips ideally
   array_of_rows = []
+  # grouped_by_port = @open_ports.group_by { |e| [e[:addr], e[:protop]]}
   grouped_by_port = @scan_array.group_by {|e| e[:protop]}
   grouped_by_port.each do |k, v|
     rows = {}
     rows[:addrs] = []
     rows[:port] = k
     v.each do |value|
-      rows[:addrs] << value[:addr]
+      unless rows[:addrs].include?(value[:addr])
+        rows[:addrs] << value[:addr]
+      end
     end
     array_of_rows << rows
   end
@@ -159,7 +186,7 @@ def toms_sheet
   rows      = []
   headers   = ['IP Address', 'Operating System', 'Protocol/Port', 'Service Version']
   sheetname = "Tom's Sheet"
-  @scan_array.each do |inner|
+  @open_ports.each do |inner|
    rows << [inner[:addr], inner[:os], inner[:protop], inner[:combo]]
   end
   create_excel_data(headers, rows, sheetname)
@@ -170,9 +197,12 @@ def terminal_out
 end
 
 parse
+create_port_collections
 create_directory
 create_excel_file
 create_basic_open_ports_list
+open_and_closed_stats
+up_and_down
 condensed_open_ports
 grouped_by_port_excel
 toms_sheet
