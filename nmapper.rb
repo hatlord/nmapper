@@ -70,7 +70,20 @@ def parse
 end
 
 def create_port_collections
-  @open_ports = @scan_array.select { |e| e[:portstate] == "open" } #portstate doesnt exist if the host has no open ports...........
+  @open_ports   = @scan_array.select { |e| e[:portstate] == "open" } #portstate doesnt exist if the host is totally dead
+  # @closed_ports = @scan_array.select { |e| e[:portstate] != "open"}
+end
+
+def open_and_closed_stats
+  @all_hosts = @scan_array.group_by { |e| e[:portstate]}
+  dead_hosts = []
+  @all_hosts.each do |k, v|
+    v.each do |inner|
+      if k != "open"
+        dead_hosts << inner[:addr]
+      end
+    end
+  end
 end
 
 def group_by_ip
@@ -87,29 +100,6 @@ def group_by_ip
     scanarray << scandata
   end
   scanarray
-end
-
-def open_and_closed_stats
-  @livearray = []
-  addrgroup = @scan_array.group_by { |e| e[:addr]}
-  addrgroup.each do |k, v|
-    hosts = {}
-    hosts[:addr] = k
-    hosts[:ports] = []
-    v.each do |value|
-      hosts[:file] = value[:file]
-      hosts[:ports] << value[:port] #check length of this array, if zero - host is totes dead, if not, its live (none of the dead hosts show up here)
-    end
-    @livearray << hosts
-  end
-end
-
-def up_and_down
-  #the below two will work, but i want to have columns for each scan type, which makes it tricky
-  # @livearray.each { |e| puts e[:ports].length}
-  down = @livearray.select { |e| e[:ports].length == 0 } 
-  up = @livearray.select { |e| e[:ports].length > 0 }
-  # pp up
 end
 
 def create_excel_file
@@ -155,8 +145,7 @@ end
 def group_by_port
   #should come back and consolidate this and group_by_ips ideally
   array_of_rows = []
-  # grouped_by_port = @open_ports.group_by { |e| [e[:addr], e[:protop]]}
-  grouped_by_port = @scan_array.group_by {|e| e[:protop]}
+  grouped_by_port = @open_ports.group_by {|e| e[:protop]}
   grouped_by_port.each do |k, v|
     rows = {}
     rows[:addrs] = []
@@ -202,7 +191,6 @@ create_directory
 create_excel_file
 create_basic_open_ports_list
 open_and_closed_stats
-up_and_down
 condensed_open_ports
 grouped_by_port_excel
 toms_sheet
