@@ -27,6 +27,7 @@ def parse
         hosts[:mac]       = ports.xpath('./address[2]/@addr').text
         hosts[:vendor]    = ports.xpath('./address[2]/@vendor').text
         hosts[:os]        = ports.xpath('./os/osmatch/@name').map(&:text).join("\r")
+        hosts[:hostname]  = ports.xpath('./hostnames/hostname/@name').map(&:text).join("\r")
         puts "Parsing: #{hosts[:addr]}"
         ports.xpath('./ports/port').each do |srvc|
           hosts[:file]      = File.basename(file, '.*')
@@ -124,10 +125,10 @@ end
 
 def create_basic_open_ports_list
   rows      = []
-  headers   = ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'Responding MAC Addr', 'Responding Mac Addr Vendor', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output', 'Reason for Open Port', 'Tester Notes', 'Password Attack?', 'Plaintext Logon?', 'No MFA?', 'Wildcard?']
+  headers   = ['NMAP File', 'Command', 'Scan Start', 'Scan End', 'Scan Time', 'Hosts Up', 'Hosts Down', 'Total Hosts', 'IP', 'Hostname', 'Responding MAC Addr', 'Responding Mac Addr Vendor', 'OS', 'Port', 'Service Version', 'ScriptID', 'Script Output']
   sheetname = 'Open Ports'
   @open_ports.each do |result|
-    rows << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:mac], result[:vendor], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
+    rows << [result[:file], result[:args], result[:start], result[:end], result[:time], result[:up], result[:down], result[:total], result[:addr], result[:hostname], result[:mac], result[:vendor], result[:os], result[:protop], result[:combo], result[:scriptid], result[:scriptout], result[:reason]]
   end
   create_excel_data(headers, rows, sheetname)
 end
@@ -173,7 +174,7 @@ end
 
 def toms_sheet
   rows      = []
-  headers   = ['IP Address', 'Operating System', 'Protocol/Port', 'Service Version']
+  headers   = ['IP Address', 'Operating System', 'Protocol/Port', 'Service Version', 'Reason for Open Port', 'Tester Notes', 'Domain/URL/vHOST', 'Password Attack?', 'Plaintext Logon?', 'No MFA?', 'Wildcard?', 'Default Web Server Page']
   sheetname = "Tom's Sheet"
   @open_ports.each do |inner|
    rows << [inner[:addr], inner[:os], inner[:protop], inner[:combo]]
