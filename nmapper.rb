@@ -71,7 +71,7 @@ def parse
 end
 
 def create_port_collections
-  @open_ports   = @scan_array.select { |e| e[:portstate] == "open" } #portstate doesnt exist if the host is totally dead
+  @open_ports   = @scan_array.select { |e| e[:portstate] == "open" && e[:service] != "tcpwrapped"} #portstate doesnt exist if the host is totally dead
   # @closed_ports = @scan_array.select { |e| e[:portstate] != "open"}
 end
 
