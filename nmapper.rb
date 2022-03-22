@@ -135,10 +135,10 @@ end
 
 def condensed_open_ports
   rows      = []
-  headers   = ['File', 'IP', 'Ports', 'Port Count']
+  headers   = ['IP', 'Ports', 'Port Count']
   sheetname = 'CondensedPorts'
   group_by_ip.each do |inner|
-    rows << [inner[:file], inner[:ip], inner[:ports].uniq.join(", "), inner[:ports].uniq.length]
+    rows << [inner[:ip], inner[:ports].uniq.join(", "), inner[:ports].uniq.length]
   end
   create_excel_data(headers, rows.sort_by { |e| e[3].to_i}.reverse, sheetname) #sort port count in descending order
 end
