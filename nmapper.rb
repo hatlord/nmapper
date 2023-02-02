@@ -172,6 +172,18 @@ def grouped_by_port_excel
   create_excel_data(headers, rows.sort_by { |e| e[2].to_i}.reverse, sheetname)
 end
 
+def nessus_ports
+  #List of open ports to feed to Nessus
+  rows = []
+  headers = ['Ports']
+  sheetname = 'NessusPorts'
+  ports = []
+  @open_ports.each do |live|
+    ports << live[:port]
+  end
+  create_excel_data(headers, [[ports.uniq.join(", ")]], sheetname)
+end
+
 def toms_sheet
   rows      = []
   headers   = ['IP Address', 'Operating System', 'Protocol/Port', 'Service Version', 'Reason for Open Port', 'Tester Notes', 'Domain/URL/vHOST', 'Password Attack?', 'Plaintext Logon?', 'No MFA?', 'Wildcard?', 'Default Web Server Page']
@@ -194,5 +206,6 @@ create_basic_open_ports_list
 open_and_closed_stats
 condensed_open_ports
 grouped_by_port_excel
+nessus_ports
 toms_sheet
 terminal_out
